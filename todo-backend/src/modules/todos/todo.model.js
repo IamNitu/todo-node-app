@@ -11,11 +11,13 @@ const todoSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
     },
     description: {
       type: String,
       trim: true,
-      default:""
+      default:"",
+      maxlength: 500,
     },
     completed: {
       type: Boolean,
