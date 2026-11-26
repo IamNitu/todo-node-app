@@ -26,10 +26,14 @@ class TodoController extends GetxController {
   }
 
   List<TodoModel> get visibleTodos {
+    return todosForTab(selectedTab.value);
+  }
+
+  List<TodoModel> todosForTab(int tabIndex) {
     final now = DateTime.now();
     final startOfTomorrow = DateTime(now.year, now.month, now.day + 1);
 
-    switch (selectedTab.value) {
+    switch (tabIndex) {
       case 1:
         return todos
             .where(
