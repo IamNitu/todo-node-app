@@ -17,98 +17,113 @@ class OnboardingPage extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, viewport) {
             final horizontalPadding = viewport.maxWidth < 360 ? 18.0 : 25.0;
+            const topPadding = 20.0;
+            const bottomPadding = 24.0;
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 horizontalPadding,
-                12,
+                topPadding,
                 horizontalPadding,
-                20,
+                bottomPadding,
               ),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 560),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.circle,
-                                color: Color(0xFFFFEE54),
-                                size: 10,
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  'TODO, MADE SIMPLE',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.3,
-                                      ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight:
+                          (viewport.maxHeight - topPadding - bottomPadding)
+                              .clamp(0, double.infinity),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.circle,
+                                  color: Color(0xFFFFEE54),
+                                  size: 10,
                                 ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'TODO, MADE SIMPLE',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 1.3,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            TextButton(
+                              onPressed: _openTodos,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
                               ),
-                            ],
-                          ),
-                          TextButton(
-                            onPressed: _openTodos,
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white,
+                              child: const Text('Skip'),
                             ),
-                            child: const Text('Skip'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Make room for\nwhat matters.',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              height: 1.04,
-                              letterSpacing: -1.1,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Plan a little. Breathe a lot. Your day is yours.',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          height: 1.4,
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const _PlannerIllustration(),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _openTodos,
-                        iconAlignment: IconAlignment.end,
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        label: const Text("Let's get started"),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF8F35A1),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 17,
-                          ),
-                          textStyle: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Make room for\nwhat matters.',
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.04,
+                                    letterSpacing: -1.1,
+                                  ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Plan a little. Breathe a lot. Your day is yours.',
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    height: 1.4,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const _PlannerIllustration(),
+                        FilledButton.icon(
+                          onPressed: _openTodos,
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          label: const Text("Let's get started"),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF8F35A1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 17,
+                            ),
+                            textStyle: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
