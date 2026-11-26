@@ -5,7 +5,7 @@
 }
 
 android {
-    namespace = "com.example.todo_app"
+    namespace = "com.yojana.todo_app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.todo_app"
+        applicationId = "com.yojana.todo_app"
         minSdk = maxOf(flutter.minSdkVersion, 24)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
