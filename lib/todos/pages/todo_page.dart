@@ -12,50 +12,11 @@ class TodoPage extends GetView<TodoController> {
     return Scaffold(
       backgroundColor: const Color(0xFFFCFAFD),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontalPadding = constraints.maxWidth < 360
-                ? 16.0
-                : constraints.maxWidth < 600
-                ? 20.0
-                : 32.0;
-
-            return ListView(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                18,
-                horizontalPadding,
-                24,
-              ),
-              children: [
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const _Greeting(),
-                        const SizedBox(height: 24),
-                        _StatusTabs(controller: controller),
-                        const SizedBox(height: 24),
-                        _TasksHeading(
-                          controller: controller,
-                          onAdd: _showEditor,
-                        ),
-                        const SizedBox(height: 14),
-                        _TodoGrid(
-                          controller: controller,
-                          onAdd: _showEditor,
-                          onEdit: (todo) => _showEditor(todo),
-                          onDelete: _confirmDelete,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
+        child: _TodoPageBody(
+          controller: controller,
+          onAdd: () => _showEditor(),
+          onEdit: _showEditor,
+          onDelete: _confirmDelete,
         ),
       ),
     );
@@ -90,6 +51,161 @@ class TodoPage extends GetView<TodoController> {
       ),
     );
     if (shouldDelete == true) await controller.deleteTodo(todo);
+  }
+}
+
+class _TodoPageBody extends StatefulWidget {
+  const _TodoPageBody({
+    required this.controller,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final TodoController controller;
+  final VoidCallback onAdd;
+  final ValueChanged<TodoModel> onEdit;
+  final ValueChanged<TodoModel> onDelete;
+
+  @override
+  State<_TodoPageBody> createState() => _TodoPageBodyState();
+}
+
+class _TodoPageBodyState extends State<_TodoPageBody> {
+  late final PageController _pageController;
+  late final Worker _tabWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialPage = 2 - widget.controller.selectedTab.value.clamp(0, 2);
+    _pageController = PageController(initialPage: initialPage);
+    _tabWorker = ever<int>(widget.controller.selectedTab, _syncPageToTab);
+  }
+
+  void _syncPageToTab(int index) {
+    if (!_pageController.hasClients) return;
+    final page = 2 - index;
+    if (_pageController.page?.round() == page) return;
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _selectTab(int index) {
+    widget.controller.selectTab(index);
+  }
+
+  @override
+  void dispose() {
+    _tabWorker.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth < 360
+            ? 16.0
+            : constraints.maxWidth < 600
+            ? 20.0
+            : 32.0;
+
+        return Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                18,
+                horizontalPadding,
+                0,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _Greeting(),
+                      const SizedBox(height: 24),
+                      _StatusTabs(
+                        controller: widget.controller,
+                        onSelected: _selectTab,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: (page) {
+                        widget.controller.selectTab(2 - page);
+                      },
+                      children: [
+                        for (var page = 0; page < 3; page++)
+                          _TodoTabPage(
+                            controller: widget.controller,
+                            tabIndex: 2 - page,
+                            onAdd: widget.onAdd,
+                            onEdit: widget.onEdit,
+                            onDelete: widget.onDelete,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TodoTabPage extends StatelessWidget {
+  const _TodoTabPage({
+    required this.controller,
+    required this.tabIndex,
+    required this.onAdd,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final TodoController controller;
+  final int tabIndex;
+  final VoidCallback onAdd;
+  final ValueChanged<TodoModel> onEdit;
+  final ValueChanged<TodoModel> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        _TasksHeading(controller: controller, tabIndex: tabIndex, onAdd: onAdd),
+        const SizedBox(height: 14),
+        _TodoGrid(
+          controller: controller,
+          tabIndex: tabIndex,
+          onAdd: onAdd,
+          onEdit: onEdit,
+          onDelete: onDelete,
+        ),
+      ],
+    );
   }
 }
 
@@ -516,9 +632,10 @@ class _Greeting extends StatelessWidget {
 }
 
 class _StatusTabs extends StatelessWidget {
-  const _StatusTabs({required this.controller});
+  const _StatusTabs({required this.controller, required this.onSelected});
 
   final TodoController controller;
+  final ValueChanged<int> onSelected;
   static const labels = ['Today', 'Upcoming', 'Done'];
 
   @override
@@ -546,7 +663,7 @@ class _StatusTabs extends StatelessWidget {
                   ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),
-                    onTap: () => controller.selectTab(index),
+                    onTap: () => onSelected(index),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
@@ -580,20 +697,25 @@ class _StatusTabs extends StatelessWidget {
 }
 
 class _TasksHeading extends StatelessWidget {
-  const _TasksHeading({required this.controller, required this.onAdd});
+  const _TasksHeading({
+    required this.controller,
+    required this.tabIndex,
+    required this.onAdd,
+  });
 
   final TodoController controller;
+  final int tabIndex;
   final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final title = switch (controller.selectedTab.value) {
+      final title = switch (tabIndex) {
         1 => 'Upcoming tasks',
         2 => 'Completed tasks',
         _ => 'Today’s tasks',
       };
-      final count = controller.visibleTodos.length;
+      final count = controller.todosForTab(tabIndex).length;
       final countLabel = '$count ${count == 1 ? 'task' : 'tasks'}';
 
       return Row(
@@ -644,12 +766,14 @@ class _TasksHeading extends StatelessWidget {
 class _TodoGrid extends StatelessWidget {
   const _TodoGrid({
     required this.controller,
+    required this.tabIndex,
     required this.onAdd,
     required this.onEdit,
     required this.onDelete,
   });
 
   final TodoController controller;
+  final int tabIndex;
   final VoidCallback onAdd;
   final ValueChanged<TodoModel> onEdit;
   final ValueChanged<TodoModel> onDelete;
@@ -701,28 +825,40 @@ class _TodoGrid extends StatelessWidget {
         );
       }
 
-      final todos = controller.visibleTodos;
+      final todos = controller.todosForTab(tabIndex);
       if (todos.isEmpty) {
         return _EmptyTasks(
           onAdd: onAdd,
-          isDoneTab: controller.selectedTab.value == 2,
-          isUpcomingTab: controller.selectedTab.value == 1,
+          isDoneTab: tabIndex == 2,
+          isUpcomingTab: tabIndex == 1,
         );
       }
 
-      return Column(
-        children: [
-          for (final todo in todos)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _TodoCard(
-                todo: todo,
-                onToggle: () => controller.toggleCompleted(todo),
-                onEdit: () => onEdit(todo),
-                onDelete: () => onDelete(todo),
-              ),
-            ),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final textScale = MediaQuery.textScalerOf(context).scale(1);
+          final twoColumns = constraints.maxWidth >= 320 && textScale <= 1.25;
+          final cardWidth = twoColumns
+              ? (constraints.maxWidth - 14) / 2
+              : constraints.maxWidth;
+
+          return Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            children: [
+              for (final todo in todos)
+                SizedBox(
+                  width: cardWidth,
+                  child: _TodoCard(
+                    todo: todo,
+                    onToggle: () => controller.toggleCompleted(todo),
+                    onEdit: () => onEdit(todo),
+                    onDelete: () => onDelete(todo),
+                  ),
+                ),
+            ],
+          );
+        },
       );
     });
   }
