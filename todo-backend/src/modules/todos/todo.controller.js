@@ -1,15 +1,18 @@
 ﻿const Todo = require("./todo.model");
 
 const priorities = ["basic", "important", "urgent"];
+const TITLE_MAX_LENGTH = 120;
+const DESCRIPTION_MAX_LENGTH = 500;
 
-// const getTodos = async (req, res) => {
-//   try {
-//     const todos = await Todo.find().sort({ dueAt: 1, createdAt: -1 });
-//     return res.status(200).json(todos);
-//   } catch (error) {
-//     return res.status(500).json({ error: error.message });
-//   }
-// };
+const handleControllerError = (res, error, operation) => {
+  console.error(`Todo ${operation} failed:`, error);
+
+  if (error.name === "CastError" || error.name === "ValidationError") {
+    return res.status(400).json({ error: "Todo data is invalid" });
+  }
+
+  return res.status(500).json({ error: "An unexpected server error occurred" });
+};
 
 const getTodos = async (req, res)=>{
   try{
@@ -27,7 +30,7 @@ const getTodos = async (req, res)=>{
     return res.status(200).json(todos);
   }
   catch(error){
-    return res.status(500).json({error:error.message});
+    return handleControllerError(res, error, "list request");
   }
 };
 
@@ -45,6 +48,20 @@ const createTodo = async (req, res) => {
 
     if (typeof title !== "string" || !title.trim()) {
       return res.status(400).json({ error: "Please provide a title" });
+    }
+    if (title.trim().length > TITLE_MAX_LENGTH) {
+      return res.status(400).json({ error: "Title cannot exceed 120 characters" });
+    }
+    if (description !== undefined && typeof description !== "string") {
+      return res.status(400).json({ error: "Description must be text" });
+    }
+    if (
+      typeof description === "string" &&
+      description.trim().length > DESCRIPTION_MAX_LENGTH
+    ) {
+      return res.status(400).json({
+        error: "Description cannot exceed 500 characters",
+      });
     }
     if (!dueAt || Number.isNaN(Date.parse(dueAt))) {
       return res.status(400).json({ error: "Please provide a valid due date and time" });
@@ -65,7 +82,7 @@ const createTodo = async (req, res) => {
 
     return res.status(201).json({ success: true, todo });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return handleControllerError(res, error, "create request");
   }
 };
 
@@ -86,11 +103,21 @@ const updateTodo = async (req, res) => {
       if (typeof title !== "string" || !title.trim()) {
         return res.status(400).json({ error: "Title cannot be empty" });
       }
+      if (title.trim().length > TITLE_MAX_LENGTH) {
+        return res.status(400).json({
+          error: "Title cannot exceed 120 characters",
+        });
+      }
       updates.title = title.trim();
     }
     if(description !== undefined){
       if(typeof description !== "string"){
         return res.status(400).json({error:"Description must be text"});
+      }
+      if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
+        return res.status(400).json({
+          error: "Description cannot exceed 500 characters",
+        });
       }
       updates.description = description.trim();
     }
@@ -132,8 +159,7 @@ const updateTodo = async (req, res) => {
 
     return res.status(200).json({ success: true, todo });
   } catch (error) {
-    const status = error.name === "CastError" ? 400 : 500;
-    return res.status(status).json({ error: error.message });
+    return handleControllerError(res, error, "update request");
   }
 };
 
@@ -152,8 +178,7 @@ const deleteTodo = async (req, res) => {
     }
     return res.status(200).json({ success: true, todo });
   } catch (error) {
-    const status = error.name === "CastError" ? 400 : 500;
-    return res.status(status).json({ error: error.message });
+    return handleControllerError(res, error, "delete request");
   }
 };
 
