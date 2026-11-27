@@ -14,10 +14,13 @@ class TodoController extends GetxController {
   final TodoService _service;
   final TodoNotificationService _notifications;
   final selectedTab = 0.obs;
+  final searchQuery = ''.obs;
   final todos = <TodoModel>[].obs;
   final isLoading = false.obs;
   final isSaving = false.obs;
   final errorMessage = RxnString();
+  Timer? _searchDebounce;
+  int _fetchRequestId = 0;
 
   @override
   void onInit() {
@@ -33,40 +36,63 @@ class TodoController extends GetxController {
     final now = DateTime.now();
     final startOfTomorrow = DateTime(now.year, now.month, now.day + 1);
 
-    switch (tabIndex) {
-      case 1:
-        return todos
+    final tabTodos = switch (tabIndex) {
+      1 =>
+        todos
             .where(
               (todo) =>
                   !todo.completed &&
                   (todo.dueAt == null ||
                       !todo.dueAt!.isBefore(startOfTomorrow)),
             )
-            .toList(growable: false);
-      case 2:
-        return todos.where((todo) => todo.completed).toList(growable: false);
-      default:
-        return todos
+            .toList(growable: false),
+      2 => todos.where((todo) => todo.completed).toList(growable: false),
+      _ =>
+        todos
             .where(
               (todo) =>
                   !todo.completed &&
                   todo.dueAt != null &&
                   todo.dueAt!.isBefore(startOfTomorrow),
             )
-            .toList(growable: false);
-    }
+            .toList(growable: false),
+    };
+
+    final query = searchQuery.value.trim().toLowerCase();
+    if (query.isEmpty) return tabTodos;
+
+    return tabTodos
+        .where(
+          (todo) =>
+              todo.title.toLowerCase().contains(query) ||
+              todo.description.toLowerCase().contains(query),
+        )
+        .toList(growable: false);
+  }
+
+  void setSearchQuery(String value) {
+    searchQuery.value = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      fetchTodos(search: value);
+    });
   }
 
   void selectTab(int index) {
     selectedTab.value = index;
   }
 
-  Future<void> fetchTodos() async {
+  Future<void> fetchTodos({String? search}) async {
+    final requestId = ++_fetchRequestId;
     isLoading.value = true;
     errorMessage.value = null;
 
     try {
-      final result = await _service.getTodos();
+      final result = await _service.getTodos(
+        search: search ?? searchQuery.value,
+      );
+      if (requestId != _fetchRequestId) return;
+
       todos.assignAll(result);
       for (final todo in result) {
         if (todo.reminderEnabled && !todo.completed) {
@@ -75,10 +101,18 @@ class TodoController extends GetxController {
         }
       }
     } catch (error) {
-      errorMessage.value = _messageFor(error);
+      if (requestId == _fetchRequestId) {
+        errorMessage.value = _messageFor(error);
+      }
     } finally {
-      isLoading.value = false;
+      if (requestId == _fetchRequestId) isLoading.value = false;
     }
+  }
+
+  @override
+  void onClose() {
+    _searchDebounce?.cancel();
+    super.onClose();
   }
 
   Future<bool> createTodo({
