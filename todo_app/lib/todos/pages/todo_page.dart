@@ -73,6 +73,7 @@ class _TodoPageBody extends StatefulWidget {
 
 class _TodoPageBodyState extends State<_TodoPageBody> {
   late final PageController _pageController;
+  late final TextEditingController _searchController;
   late final Worker _tabWorker;
 
   @override
@@ -80,6 +81,9 @@ class _TodoPageBodyState extends State<_TodoPageBody> {
     super.initState();
     final initialPage = 2 - widget.controller.selectedTab.value.clamp(0, 2);
     _pageController = PageController(initialPage: initialPage);
+    _searchController = TextEditingController(
+      text: widget.controller.searchQuery.value,
+    );
     _tabWorker = ever<int>(widget.controller.selectedTab, _syncPageToTab);
   }
 
@@ -98,10 +102,17 @@ class _TodoPageBodyState extends State<_TodoPageBody> {
     widget.controller.selectTab(index);
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    widget.controller.setSearchQuery('');
+    FocusScope.of(context).unfocus();
+  }
+
   @override
   void dispose() {
     _tabWorker.dispose();
     _pageController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -136,7 +147,13 @@ class _TodoPageBodyState extends State<_TodoPageBody> {
                         controller: widget.controller,
                         onSelected: _selectTab,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
+                      _TodoSearchField(
+                        controller: _searchController,
+                        todoController: widget.controller,
+                        onClear: _clearSearch,
+                      ),
+                      const SizedBox(height: 14),
                     ],
                   ),
                 ),
@@ -205,6 +222,55 @@ class _TodoTabPage extends StatelessWidget {
           onDelete: onDelete,
         ),
       ],
+    );
+  }
+}
+
+class _TodoSearchField extends StatelessWidget {
+  const _TodoSearchField({
+    required this.controller,
+    required this.todoController,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final TodoController todoController;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      onChanged: todoController.setSearchQuery,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Search tasks',
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: Obx(
+          () => todoController.searchQuery.value.isEmpty
+              ? const SizedBox.shrink()
+              : IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE8E3EA)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE8E3EA)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF1687F8), width: 1.4),
+        ),
+      ),
     );
   }
 }
@@ -827,6 +893,10 @@ class _TodoGrid extends StatelessWidget {
 
       final todos = controller.todosForTab(tabIndex);
       if (todos.isEmpty) {
+        if (controller.searchQuery.value.trim().isNotEmpty) {
+          return const _NoSearchResults();
+        }
+
         return _EmptyTasks(
           onAdd: onAdd,
           isDoneTab: tabIndex == 2,
@@ -861,6 +931,55 @@ class _TodoGrid extends StatelessWidget {
         },
       );
     });
+  }
+}
+
+class _NoSearchResults extends StatelessWidget {
+  const _NoSearchResults();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2E5F5),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: const Icon(
+                Icons.search_off_rounded,
+                color: Color(0xFFB34FC7),
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'No matching tasks',
+              style: TextStyle(
+                color: Color(0xFF26212B),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Try another task title or description.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF89838E),
+                fontSize: 14,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
