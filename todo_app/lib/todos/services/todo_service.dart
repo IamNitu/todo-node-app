@@ -30,9 +30,19 @@ class TodoService {
     return Uri.parse('http://$host:5000/api/todos');
   }
 
-  Future<List<TodoModel>> getTodos() async {
+  Future<List<TodoModel>> getTodos({String search = ''}) async {
+    final normalizedSearch = search.trim();
+    final uri = normalizedSearch.isEmpty
+        ? _baseUri
+        : _baseUri.replace(
+            queryParameters: {
+              ..._baseUri.queryParameters,
+              'search': normalizedSearch,
+            },
+          );
+
     final response = await _client
-        .get(_baseUri, headers: await _headers())
+        .get(uri, headers: await _headers())
         .timeout(const Duration(seconds: 15));
     final data = _decodeResponse(response);
     if (data is! List) {
@@ -58,7 +68,7 @@ class TodoService {
           headers: await _headers(json: true),
           body: jsonEncode({
             'title': title,
-            'description':description.trim(),
+            'description': description.trim(),
             'completed': false,
             'dueAt': dueAt.toUtc().toIso8601String(),
             'priority': priority,
@@ -83,7 +93,9 @@ class TodoService {
   }) async {
     final updates = <String, dynamic>{};
     if (title != null) updates['title'] = title;
-    if(description != null){ updates['description']=description.trim();}
+    if (description != null) {
+      updates['description'] = description.trim();
+    }
     if (completed != null) updates['completed'] = completed;
     if (dueAt != null) updates['dueAt'] = dueAt.toUtc().toIso8601String();
     if (priority != null) updates['priority'] = priority;
