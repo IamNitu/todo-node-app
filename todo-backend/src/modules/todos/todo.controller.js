@@ -14,6 +14,8 @@ const handleControllerError = (res, error, operation) => {
   return res.status(500).json({ error: "An unexpected server error occurred" });
 };
 
+const escapeRegex = (value)=>   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const getTodos = async (req, res)=>{
   try{
     const ownerId = req.get("x-device-id");
@@ -23,9 +25,36 @@ const getTodos = async (req, res)=>{
         error:"x-device-id header is required",
       });
     }
-    const todos = await Todo.find({ownerId}).sort({
-      dueAt:1,
-      createdAt:-1
+
+    const rawSearch = req.query.search;
+
+    if(rawSearch !== undefined && typeof rawSearch != "string"){
+      return res.status(400).json({
+        error:"Search must be text",
+      });
+    }
+
+    const search = rawSearch?.trim() ||"";
+
+    if (search.length > 120) {
+      return res.status(400).json({
+        error: "Search cannot exceed 120 characters",
+      });
+    }
+
+    const filter = {ownerId};
+
+    if(search){
+      const safeSearch = escapeRegex(search);
+
+      filter.$or=[
+        {title:{$regex:safeSearch,$options:"i"}},
+        {description:{$regex:safeSearch, $options:"i"}},
+      ];
+    }
+    const todos = await Todo.find(filter).sort({
+      dueAt: 1,
+      createdAt: -1,
     });
     return res.status(200).json(todos);
   }
